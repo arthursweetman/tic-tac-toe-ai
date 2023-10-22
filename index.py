@@ -18,8 +18,10 @@ class Players(Enum):
 
 class Board():
 
-    def __init__(self):
+    def __init__(self, firstPlayer, secondPlayer):
         self.tiles = np.repeat(None, 9)
+        self.__thisPlayer = firstPlayer
+        self.__otherPlayer = secondPlayer
         self.__winningCombos = [[1, 1, 1, 0, 0, 0, 0, 0, 0],
                                 [0, 0, 0, 1, 1, 1, 0, 0, 0],
                                 [0, 0, 0, 0, 0, 0, 1, 1, 1],
@@ -34,9 +36,19 @@ class Board():
     def play(self, tile, player):
         if self.__gameStatus == "Resolved":
             print("Game is over.", self.__winner, "wins!\nPlease reset board to play again.")
+        elif self.__thisPlayer != player:
+            print("It is not your turn. Please let the other player play their turn.")
+        elif self.tiles[tile] is not None:
+            print("Space is already occupied. Cannot play there.")
         else:
             self.tiles[tile] = player
+            self.__switchPlayersTurn()
             self.analyze(player)
+
+    def __switchPlayersTurn(self):
+        temp = self.__thisPlayer
+        self.__thisPlayer = self.__otherPlayer
+        self.__otherPlayer = temp
 
     def show(self):
         print(self.tiles)
@@ -54,7 +66,7 @@ class Board():
                 break
 
     def reset(self):
-        self.__init__()
+        self.__init__(self.__thisPlayer, self.__otherPlayer)
 
 def openGame():
     window = Tk()
@@ -70,12 +82,19 @@ def openGame():
 
 
 def main():
-    board = Board()
+    board = Board(Players.O, Players.X)
     # openGame()
+    board.play(3, Players.X)
     board.play(3, Players.X)
     board.play(4, Players.X)
     board.play(5, Players.X)
     board.play(6, Players.O)
+    board.play(1, Players.O)
+    board.play(1, Players.X)
+    board.play(1, Players.O)
+    board.play(8, Players.O)
+    board.play(0, Players.X)
+    board.play(7, Players.O)
     board.reset()
     board.show()
 
