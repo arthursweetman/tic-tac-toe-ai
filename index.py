@@ -9,6 +9,8 @@ import pandas as pd
 from tkinter import *
 from tkinter import ttk
 from enum import Enum
+from keras.layers import Dense, Input
+from keras import Model
 
 
 class Players(Enum):
@@ -32,6 +34,7 @@ class Board():
                                 [0, 0, 1, 0, 1, 0, 1, 0, 0]]
         self.__gameStatus = "Unresolved"
         self.__winner = "TBD"
+        self.__allBoards = []
 
     def play(self, tile, player):
         if self.__gameStatus == "Resolved":
@@ -43,6 +46,7 @@ class Board():
         else:
             self.tiles[tile] = player
             self.__switchPlayersTurn()
+            self.__allBoards.append(self.tiles.copy())  # important to append a copy of the current game board, so it does not get updated in the future
             self.analyze(player)
 
     def __switchPlayersTurn(self):
@@ -68,6 +72,14 @@ class Board():
     def reset(self):
         self.__init__(self.__thisPlayer, self.__otherPlayer)
 
+    def getStatus(self):
+        return self.__gameStatus
+
+
+    def getAllBoards(self):
+        return self.__allBoards
+
+
 def openGame():
     window = Tk()
     for i in range(3):
@@ -81,23 +93,31 @@ def openGame():
     window.mainloop()
 
 
+def createModel():
+    input = Input(9)
+    layer1 = Dense(50, activation="relu")(input)
+    out = Dense(9, activation="softmax")(layer1)
+    model = Model(input, out)
+    return model
+
+
+def playGame(model, board = Board(Players.X, Players.O)):
+    while board.getStatus() == "Unresolved":
+        pred = model.predict(board.tiles)
+        nextMove = np.where(np.max(pred))
+        board.play(nextMove, Players.X)
+
+
+
 def main():
     board = Board(Players.O, Players.X)
-    # openGame()
-    board.play(3, Players.X)
-    board.play(3, Players.X)
+    # model = createModel()
+    # model.summary()
+    # model.fit()
+    board.play(0, Players.O)
     board.play(4, Players.X)
-    board.play(5, Players.X)
-    board.play(6, Players.O)
-    board.play(1, Players.O)
-    board.play(1, Players.X)
-    board.play(1, Players.O)
     board.play(8, Players.O)
-    board.play(0, Players.X)
-    board.play(7, Players.O)
-    board.reset()
-    board.show()
-
+    print(board.getAllBoards())
 
 
 if __name__ == "__main__":
