@@ -8,20 +8,14 @@ import numpy as np
 import pandas as pd
 from tkinter import *
 from tkinter import ttk
-from enum import Enum
 from keras.layers import Dense, Input
 from keras import Model
-
-
-class Players(Enum):
-    X = "x"
-    O = "o"
 
 
 class Board():
 
     def __init__(self, firstPlayer, secondPlayer):
-        self.tiles = np.repeat(None, 9)
+        self.tiles = np.zeros((9,2), dtype=bool)
         self.__thisPlayer = firstPlayer
         self.__otherPlayer = secondPlayer
         self.__winningCombos = [[1, 1, 1, 0, 0, 0, 0, 0, 0],
@@ -41,10 +35,10 @@ class Board():
             print("Game is over.", self.__winner, "wins!\nPlease reset board to play again.")
         elif self.__thisPlayer != player:
             print("It is not your turn. Please let the other player play their turn.")
-        elif self.tiles[tile] is not None:
+        elif np.sum(self.tiles[tile]) > 0:
             print("Space is already occupied. Cannot play there.")
         else:
-            self.tiles[tile] = player
+            self.tiles[tile, player] = 1
             self.__switchPlayersTurn()
             self.__allBoards.append(self.tiles.copy())  # important to append a copy of the current game board, so it does not get updated in the future
             self.analyze(player)
@@ -58,8 +52,9 @@ class Board():
         print(self.tiles)
 
     def analyze(self, player):
+        thisPlayersBoard = self.tiles[:,player]
         for combo in self.__winningCombos:
-            test = np.isin(np.where(combo), np.where(self.tiles == player))
+            test = np.isin(np.where(combo), np.where(thisPlayersBoard))
             result = test.prod()
             if result == 1:
                 self.__gameStatus = "Resolved"
@@ -75,9 +70,17 @@ class Board():
     def getStatus(self):
         return self.__gameStatus
 
-
     def getAllBoards(self):
         return self.__allBoards
+
+    def getPlayersTurn(self):
+        return self.__thisPlayer
+
+    def getWinner(self):
+        return self.__winner
+
+    def getWinningCombos(self):
+        return self.__winningCombos
 
 
 def openGame():
@@ -94,30 +97,53 @@ def openGame():
 
 
 def createModel():
-    input = Input(9)
+    input = Input(shape=(9,2))
     layer1 = Dense(50, activation="relu")(input)
     out = Dense(9, activation="softmax")(layer1)
     model = Model(input, out)
     return model
 
 
-def playGame(model, board = Board(Players.X, Players.O)):
-    while board.getStatus() == "Unresolved":
-        pred = model.predict(board.tiles)
-        nextMove = np.where(np.max(pred))
-        board.play(nextMove, Players.X)
+def compileModel():
+    model = createModel()
+    model.compile()
+    # model.fit()
+    return model
 
+
+def playTiffnnyGame(model):
+    tiffnny = 0
+    rando = 1
+    board = Board(tiffnny, rando)
+    while board.getStatus() == "Unresolved":
+        if board.getPlayersTurn() == tiffnny:
+            modelInput = board.tiles.copy()
+            pred = model.predict(board.tiles)
+            nextMove = np.where(np.max(pred))
+            board.play(nextMove, tiffnny)
+        elif board.getPlayersTurn() == rando:
+            openSpaces = np.where(board.tiles is None)
+            randomChoice = np.random.randint(0, len(openSpaces))
+            board.play(openSpaces[randomChoice], rando)
+        else:
+            print("...something's wrong...")
+            break
+    print(board.getAllBoards())
 
 
 def main():
-    board = Board(Players.O, Players.X)
-    # model = createModel()
-    # model.summary()
-    # model.fit()
-    board.play(0, Players.O)
-    board.play(4, Players.X)
-    board.play(8, Players.O)
+    # tiffnnyModel = compileModel()
+    # playTiffnnyGame(tiffnnyModel)
+    board = Board(0, 1)
+    board.play(0,0)
+    board.play(4, 1)
+    board.play(1, 0)
+    board.play(5, 1)
+    board.play(2, 0)
     print(board.getAllBoards())
+    # board.play(4, Players.O)
+    # board.play(8, Players.X)
+    # print(board.getAllBoards())
 
 
 if __name__ == "__main__":
