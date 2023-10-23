@@ -3,12 +3,12 @@ Author: Arthur Sweetman
 
 Creation date: October 21, 2023
 """
-
+import keras.activations
 import numpy as np
 import pandas as pd
 from tkinter import *
 from tkinter import ttk
-from keras.layers import Dense, Input
+from keras.layers import Dense, Input, Flatten
 from keras import Model
 from board import Board
 
@@ -29,7 +29,8 @@ def openGame():
 def createModel():
     input = Input(shape=(9,2))
     layer1 = Dense(50, activation="relu")(input)
-    out = Dense(9, activation="softmax")(layer1)
+    flat = Flatten(input_shape=(9,2))(layer1)
+    out = Dense(9, activation="softmax")(flat)
     model = Model(input, out)
     return model
 
@@ -38,6 +39,7 @@ def compileModel():
     model = createModel()
     model.compile()
     # model.fit()
+    model.summary()
     return model
 
 
@@ -47,14 +49,34 @@ def playTiffnnyGame(model):
     board = Board(tiffnny, rando)
     while board.getStatus() == "Unresolved":
         if board.getPlayersTurn() == tiffnny:
+            # Filter for the open slots
+            # Check if the max estimation has multiples
+            # If yes, pick a random one
+            # Otherwise, proceed as normal
             modelInput = board.tiles.copy()
-            pred = model.predict(board.tiles)
-            nextMove = np.where(np.max(pred))
-            board.play(nextMove, tiffnny)
+            pred = model.predict(np.reshape(board.tiles, (-1,9,2)))
+            nextMove = np.where(pred == np.max(pred))
+            print(pred == np.max(pred))
+            if len(nextMove[1]) > 1:
+                openSpaces = np.where(np.sum(board.tiles, axis=1) == 0)
+                nextMove = nextMove[1][openSpaces]
+                print(nextMove)
+                randomChoice = np.random.randint(0, len(nextMove))
+                board.play(nextMove[randomChoice], tiffnny)
+                continue
+            validPlay = board.play(nextMove[1], tiffnny)
+            if ~validPlay:
+                counter = 0
+                while ~validPlay:
+                    counter += 1
+                    nextMove = np.partition(pred[0], pred.size-counter)[pred.size-counter]
+                    nextMove = np.where(pred == nextMove)
+                    validPlay = board.play(nextMove[1], tiffnny)
         elif board.getPlayersTurn() == rando:
-            openSpaces = np.where(board.tiles is None)
+            openSpaces = np.where(np.sum(board.tiles, axis=1) == 0)
+            print(np.sum(board.tiles, axis=1))
             randomChoice = np.random.randint(0, len(openSpaces))
-            board.play(openSpaces[randomChoice], rando)
+            board.play(openSpaces[0][randomChoice], rando)
         else:
             print("...something's wrong...")
             break
@@ -62,15 +84,15 @@ def playTiffnnyGame(model):
 
 
 def main():
-    # tiffnnyModel = compileModel()
-    # playTiffnnyGame(tiffnnyModel)
-    board = Board(0, 1)
-    board.play(0,0)
-    board.play(4, 1)
-    board.play(1, 0)
-    board.play(5, 1)
-    board.play(2, 0)
-    print(board.getAllBoards())
+    tiffnnyModel = compileModel()
+    playTiffnnyGame(tiffnnyModel)
+    # board = Board(0, 1)
+    # board.play(0,0)
+    # board.play(4, 1)
+    # board.play(1, 0)
+    # board.play(5, 1)
+    # board.play(2, 0)
+    # print(board.getAllBoards())
     # board.play(4, Players.O)
     # board.play(8, Players.X)
     # print(board.getAllBoards())

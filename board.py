@@ -28,15 +28,19 @@ class Board():
     def play(self, tile, player):
         if self.__gameStatus == "Resolved":
             print("Game is over.", self.__winner, "wins!\nPlease reset board to play again.")
+            return False
         elif self.__thisPlayer != player:
             print("It is not your turn. Please let the other player play their turn.")
+            return False
         elif np.sum(self.tiles[tile]) > 0:
             print("Space is already occupied. Cannot play there.")
+            return False
         else:
             self.tiles[tile, player] = 1
             self.__switchPlayersTurn()
             self.__allBoards.append(self.tiles.copy())  # important to append a copy of the current game board, so it does not get updated in the future
             self.analyze(player)
+            return True
 
     def __switchPlayersTurn(self):
         temp = self.__thisPlayer
